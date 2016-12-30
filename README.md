@@ -1,4 +1,4 @@
-Osint tool to Scrap google (goal is to ask all search engine) about people.
+Osint tool to get results from Google, Bing, Yahoo, PagesBlanches about people.
 Then make a graph in neo4j .
 
  
