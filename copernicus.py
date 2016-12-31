@@ -34,6 +34,7 @@ lang = []
 
 listnbr = 0
 pageBres = []
+pageBacu = []
 resultats = []
 variation1= []
 variation2= []
@@ -148,9 +149,10 @@ def timeout(seconds=10, error_message=os.strerror(errno.ETIME)):
     return decorator
 
 
-def pageblanche(familyname):
+def pageblanche(familyname,city):
 
      global pageBres
+     global pageBacu
      print()
      Fig = Figlet(font='cybermedium')
      print(Fig.renderText('Searching family name in pagesblanches.fr'))
@@ -159,9 +161,152 @@ def pageblanche(familyname):
                  'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:52.0) Gecko/20100101 Firefox/51.0']
 
      UserAgent = random.choice(pbuser_agent_list)
-     
+     page = 0
      #UserAgent = {'User-Agent':UserAgent}
+     if city != "none":
 
+          try:
+                         query = "http://www.pagesjaunes.fr/pagesblanches/recherche?quoiqui="+familyname+"&ou="+city+"&proximite=1"
+     
+                         opener = urllib.request.build_opener()
+                         opener.addheaders = [('User-Agent', UserAgent)]
+
+                         send = opener.open(query)
+     
+
+
+                         soup = BeautifulSoup(send,'lxml')
+                         #Do a Barrel Roll
+
+                         initial = 0
+
+                         loca = re.findall('" href="#" title="Voir le plan">(.*?)</a></div>', str(soup),re.DOTALL)
+                         if len(loca) >0:
+
+                              for item in loca:
+                                   item = item.replace("   ","").replace("\n"," ").replace("<br>"," ")
+                                   loca[initial] = item
+                                   mask = re.compile('\d{5}')
+                                   codepostal = mask.search(loca[initial]).group(0)
+                                   
+                                   time.sleep(10)
+
+                                   query2 = "http://www.pagesjaunes.fr/pagesblanches/recherche?quoiqui="+familyname+"&ou="+str(codepostal)
+                                   
+                                   opener2 = urllib.request.build_opener()
+                                   opener2.addheaders = [('User-Agent', UserAgent)]
+
+                                   send2 = opener2.open(query2)
+
+
+
+                                   soup2 = BeautifulSoup(send2,'lxml')
+
+
+                                   i = 0
+                                   names = re.findall('<a class="bi-pos-links pj-lb pj-link" data-pjlb=(.*?)<span class="id-bi', str(soup2),re.DOTALL)
+
+
+                                   if len(names) > 0:
+
+                                        for item in names:
+
+                                             item = item.split('href="#" title=')
+
+                                             item = item[1].replace("   "," ").replace('"','').replace(">","").replace("\n","")
+                                             names[i] = item
+                                             
+                                             i = i + 1
+                                   else:
+                                             names.append("none")
+
+
+                                   i = 0
+
+                                   locations = re.findall('" href="#" title="Voir le plan">(.*?)</a></div>', str(soup2),re.DOTALL)
+                                   if len(locations) >0:
+     
+                                        for item in locations:
+                                             item = item.replace("   ","").replace("\n"," ").replace("<br>"," ")
+                                             locations[i] = item
+                                             
+                                             i = i + 1
+                                   else:
+                                             locations.append("none")
+
+                                   i = 0
+
+
+
+
+                                   tels = re.findall('</span><strong class="num" title="(.*?)">', str(soup2),re.DOTALL)
+
+                                   if len(tels) >0:
+                                        pass
+                                   else:
+                                             tels.append("none")
+
+
+
+                                   i = 0
+                                   for Maow in names:
+
+
+
+                                        try:
+                                             locations[i]
+                                        except:
+                                         
+                                            locations.append("none")
+
+
+                                        try:
+                                             names[i]
+                                        except:
+                                             names.append("none")
+     
+                                        try:
+                                             tels[i]
+                                        except:
+                                             tels.append("none")
+
+
+                                        if names[i] != "none" and locations[i] != "none" and tels[i] != "none":
+                                             print("Autour de "+city+"#***#"+names[i]+"#***#"+locations[i]+"#***#"+tels[i])
+                                             pageBres.append("Autour de "+city+"#***#"+names[i]+"#***#"+locations[i]+"#***#"+tels[i])
+                                             i = i + 1 
+
+                                        else:
+                                         
+                                         
+                                             pass
+
+
+
+
+
+
+
+                                   initial = initial + 1
+                         else:
+                                   locations.append("none")
+
+
+                         time.sleep(15)
+
+          except Exception as e:
+
+             print(e)
+             pass
+
+
+
+
+
+     pageBacu = pageBres
+
+
+     print()
 
      for region in regionfr:
           
@@ -531,6 +676,15 @@ def fetchurl(language,searcharg,cityarg,addarg):
             Fig = Figlet(font='cybermedium')
             print(Fig.renderText(str(inc)))
             print()
+            if cityarg != "none":
+               
+               if pbarg.lower() != "true":
+                    #cityarg = cityarg
+                    print("with cityarg")
+                    pass
+               if pbarg.lower() == "true":
+                    print("without cityarg")
+                    cityarg = "none"
 
 
             if cityarg == "none":
@@ -1556,6 +1710,9 @@ parser = ArgumentParser()
 parser.add_argument("-l","--language", dest="lang",default='fr',
                     help="Country : en,zh-CN,es,ar,pt,ja,ru,fr,de...", metavar="'LANG'")
 
+parser.add_argument("-pb","--pagesblanches", dest="pbarg",default='none',
+                    help="-pb true : Only use the city arg with pagesblanches", metavar="'PB'")
+
 parser.add_argument("-s","--search", dest="name",default='Marcel Menou',
                     help="Name to Search", metavar="'NAME'")
 
@@ -1579,6 +1736,8 @@ argscity = args.city
 argsfamily = args.family
 
 argsadd = args.add
+
+pbarg = args.pbarg
 
 family = argsfamily
 
@@ -1623,6 +1782,45 @@ if argsadd == "none" and family != "none":
      sys.exit()
 
 
+if pbarg != "none" and family == "none":
+     print()
+     print("some options are missing")
+     print()
+     print("-pb option must be used in combination with -c and -f :")
+     print()
+     print(" -s Albert Einstein -f Einstein -c Berne -pb true")
+     print()
+     print("")
+     sys.exit()
+
+if pbarg != "none" and argscity == "none":
+     print()
+     print("some options are missing")
+     print()
+     print("-pb option must be used in combination with -c and -f :")
+     print()
+     print(" -s Albert Einstein -f Einstein -c Berne -pb true")
+     print()
+     print("")
+     sys.exit()
+
+
+
+if pbarg.lower() != "true" :
+     if pbarg.lower() != "false":
+               print()
+               print("some options are missing")
+               print()
+               print("-pb option must be True or False")
+               print()
+               print(" -s Albert Einstein -f Einstein -c Berne -pb true")
+               print()
+               print("")
+               sys.exit()
+ 
+
+
+
 print()
 print()
 print("Results Languages : ",lng)
@@ -1639,7 +1837,7 @@ print()
 
 permutation(argsname)
 if family != "none":
-     pageblanche(family)
+     pageblanche(family,args.city)
 
 
 
@@ -1851,8 +2049,10 @@ labelsiteverified = db.labels.create("Important")
 labelsitechance = db.labels.create("Valide")
 labelpdfverified = db.labels.create("Important")
 labelpdfchance = db.labels.create("Valide")
+labelPbacu = db.labels.create("ResultatsPrecis")
+labelPbres = db.labels.create("Resultats")
 labelPbregion = db.labels.create("Regions")
-labelPbres = db.labels.create("ResultatsPageBlanches")
+labelPbinfo = db.labels.create("infoPageBlanches")
 
 GoogleurlPlus = db.nodes.create(name="Url Important")
 GoogleurlMinus = db.nodes.create(name="Url Valide")
@@ -1908,7 +2108,10 @@ s2.relationships.create("En Attente", Bingspecialnode)
 s3.relationships.create("En Attente", Yahoospecialnode)
 ##
 PagesBlanches = db.nodes.create(name="Resultats",Region="", Nom="", Adresse="", telephone="")
-s4.relationships.create("Annuaire", PagesBlanches)
+s4.relationships.create("Query", PagesBlanches)
+
+PbAccurate= db.nodes.create(name="Accurate",Region="", Nom="", Adresse="", telephone="")
+PagesBlanches.relationships.create("ResultatsPrecis",PbAccurate)
 
 PbAlsace= db.nodes.create(name="Alsace",Region="Alsace", Nom="", Adresse="", telephone="")
 PagesBlanches.relationships.create("Regions",PbAlsace)
@@ -1969,7 +2172,11 @@ PagesBlanches.relationships.create("Regions",PbMayotte)
 
 ##
 
-labelPbregion.add(PagesBlanches)
+labelPbres.add(PagesBlanches)
+
+labelPbregion.add(PbMayotte,PbMartinique,PbLaRunion,PbLaRunion,PbGuadeloupe,PbGuyane,PbRhoneAlpes,PbProvenceAlpesCotedAzur,PbPoitouCharentes,PbPicardie,PbPaysdelaLoire,PbNordPasdeCalais,PbMidiPyrnes,PbLorraine,PbLimousin,PbLanguedocRoussillon,PbiledeFrance,PbHauteNormandie,PbFrancheComt,PbCorse,PbChampagneArdenne,PbCentre,PbBretagne,PbBourgogne,PbBasseNormandie,PbAuvergne,PbAquitaine,PbAlsace)
+
+labelPbacu.add(PbAccurate)
 
 labelwebsite.add(GoogleurlPlus, GoogleurlMinus, BingurlPlus, BingurlMinus,YahoourlPlus, YahoourlMinus)
 
@@ -2049,148 +2256,156 @@ print()
 print()
 Fig = Figlet(font='cybermedium')
 print(Fig.renderText('Pages Blanches Resultats'))
+print("")
+print("Accurate:")
+for info in pageBacu:
+               info = info.split("#***#")
+               item = db.nodes.create(Region=info[0], Nom=info[1], Adresse=info[2], telephone=info[3])
+               PbAccurate.relationships.create("Infos",item)
+               labelPbacu.add(item)
+               print(item)
 print()
-
+print("global :")
 for info in Pb:
 #region+"#***#"+names[i]+"#***#"+locations[i]+"#***#"+tels[i]
   try:
      info = info.split("#***#")
      print(info)
      if info[0] == "Alsace":
-              item = db.nodes.create(Region=info[0], Nom=info[1], Adresse=info[2], telephone=info[3])
-     PbAlsace.relationships.create("Infos",item)
-     labelPbres.add(item)
-     print(item)
+               item = db.nodes.create(Region=info[0], Nom=info[1], Adresse=info[2], telephone=info[3])
+               PbAlsace.relationships.create("Infos",item)
+               labelPbinfo.add(item)
+               print(item)
      if info[0] == "Aquitaine":
-              item = db.nodes.create(Region=info[0], Nom=info[1], Adresse=info[2], telephone=info[3])
-     PbAquitaine.relationships.create("Infos",item)
-     labelPbres.add(item)
+               item = db.nodes.create(Region=info[0], Nom=info[1], Adresse=info[2], telephone=info[3])
+               PbAquitaine.relationships.create("Infos",item)
+               labelPbres.add(item)
      print(item)
      if info[0] == "Auvergne":
          item = db.nodes.create(Region=info[0], Nom=info[1], Adresse=info[2], telephone=info[3])
-     PbAuvergne.relationships.create("Infos",item)
-     labelPbres.add(item)
+         PbAuvergne.relationships.create("Infos",item)
+         labelPbres.add(item)
      print(item)
      if info[0] == "Basse-Normandie":
               item = db.nodes.create(Region=info[0], Nom=info[1], Adresse=info[2], telephone=info[3])
-     PbBasseNormandie.relationships.create("Infos",item)
-     labelPbres.add(item)
-     print(item)
+              PbBasseNormandie.relationships.create("Infos",item)
+              labelPbres.add(item)
+              print(item)
      if info[0] == "Bourgogne":
               item = db.nodes.create(Region=info[0], Nom=info[1], Adresse=info[2], telephone=info[3])
-     PbBourgogne.relationships.create("Infos",item)
-     labelPbres.add(item)
-     print(item)
+              PbBourgogne.relationships.create("Infos",item)
+              labelPbres.add(item)
+              print(item)
      if info[0] == "Bretagne":
               item = db.nodes.create(Region=info[0], Nom=info[1], Adresse=info[2], telephone=info[3])
-     PbBretagne.relationships.create("Infos",item)
-     labelPbres.add(item)
+              PbBretagne.relationships.create("Infos",item)
+              labelPbres.add(item)
      print(item)
      if info[0] == "Centre":
               item = db.nodes.create(Region=info[0], Nom=info[1], Adresse=info[2], telephone=info[3])
-     PbCentre.relationships.create("Infos",item)
-     labelPbres.add(item)
+              PbCentre.relationships.create("Infos",item)
+              labelPbres.add(item)
      print(item)
      if info[0] == "Champagne-Ardenne":
               item = db.nodes.create(Region=info[0], Nom=info[1], Adresse=info[2], telephone=info[3])
-     PbChampagneArdenne.relationships.create("Infos",item)
-     labelPbres.add(item)
+              PbChampagneArdenne.relationships.create("Infos",item)
+              labelPbres.add(item)
      print(item)
      if info[0] == "Corse":
               item = db.nodes.create(Region=info[0], Nom=info[1], Adresse=info[2], telephone=info[3])
-     PbCorse.relationships.create("Infos",item)
-     labelPbres.add(item)
-     print(item)
+              PbCorse.relationships.create("Infos",item)
+              labelPbres.add(item)
+              print(item)
      if info[0] == "Franche-Comté":
               item = db.nodes.create(Region=info[0], Nom=info[1], Adresse=info[2], telephone=info[3])
-     PbFrancheComt.relationships.create("Infos",item)
-     labelPbres.add(item)
+              PbFrancheComt.relationships.create("Infos",item)
+              labelPbres.add(item)
      print(item)
      if info[0] == "Haute-Normandie":
               item = db.nodes.create(Region=info[0], Nom=info[1], Adresse=info[2], telephone=info[3])
-     PbHauteNormandie.relationships.create("Infos",item)
-     labelPbres.add(item)
-     print(item)
+              PbHauteNormandie.relationships.create("Infos",item)
+              labelPbres.add(item)
+              print(item)
      if info[0] == "Île-de-France":
               item = db.nodes.create(Region=info[0], Nom=info[1], Adresse=info[2], telephone=info[3])
-     PbiledeFrance.relationships.create("Infos",item)
-     labelPbres.add(item)
+              PbiledeFrance.relationships.create("Infos",item)
+              labelPbres.add(item)
      print(item)
      if info[0] == "Languedoc-Roussillon":
               item = db.nodes.create(Region=info[0], Nom=info[1], Adresse=info[2], telephone=info[3])
-     PbLanguedocRoussillon.relationships.create("Infos",item)
-     labelPbres.add(item)
-     print(item)
+              PbLanguedocRoussillon.relationships.create("Infos",item)
+              labelPbres.add(item)
+              print(item)
      if info[0] == "Limousin":
          item = db.nodes.create(Region=info[0], Nom=info[1], Adresse=info[2], telephone=info[3])
-     PbLimousin.relationships.create("Infos",item)
-     labelPbres.add(item)
-     print(item)
+         PbLimousin.relationships.create("Infos",item)
+         labelPbres.add(item)
+         print(item)
      if info[0] == "Lorraine":
               item = db.nodes.create(Region=info[0], Nom=info[1], Adresse=info[2], telephone=info[3])
-     PbLorraine.relationships.create("Infos",item)
-     labelPbres.add(item)
-     print(item)
+              PbLorraine.relationships.create("Infos",item)
+              labelPbres.add(item)
+              print(item)
      if info[0] == "Midi-Pyrénées":
               item = db.nodes.create(Region=info[0], Nom=info[1], Adresse=info[2], telephone=info[3])
-     PbMidiPyrnes.relationships.create("Infos",item)
-     labelPbres.add(item)
-     print(item)
+              PbMidiPyrnes.relationships.create("Infos",item)
+              labelPbres.add(item)
+              print(item)
      if info[0] == "Nord-Pas-de-Calais":
               item = db.nodes.create(Region=info[0], Nom=info[1], Adresse=info[2], telephone=info[3])
-     PbNordPasdeCalais.relationships.create("Infos",item)
-     labelPbres.add(item)
-     print(item)
+              PbNordPasdeCalais.relationships.create("Infos",item)
+              labelPbres.add(item)
+              print(item)
      if info[0] == "Pays de la Loire":
               item = db.nodes.create(Region=info[0], Nom=info[1], Adresse=info[2], telephone=info[3])
-     PbPaysdelaLoire.relationships.create("Infos",item)
-     labelPbres.add(item)
-     print(item)
+              PbPaysdelaLoire.relationships.create("Infos",item)
+              labelPbres.add(item)
+              print(item)
      if info[0] == "Picardie":
              item = db.nodes.create(Region=info[0], Nom=info[1], Adresse=info[2], telephone=info[3])
-     PbPicardie.relationships.create("Infos",item)
-     labelPbres.add(item)
-     print(item)
+             PbPicardie.relationships.create("Infos",item)
+             labelPbres.add(item)
+             print(item)
      if info[0] == "Poitou-Charentes":
               item = db.nodes.create(Region=info[0], Nom=info[1], Adresse=info[2], telephone=info[3])
-     PbPoitouCharentes.relationships.create("Infos",item)
-     labelPbres.add(item)
-     print(item)
+              PbPoitouCharentes.relationships.create("Infos",item)
+              labelPbres.add(item)
+              print(item)
      if info[0] == "Provence-Alpes-Côte+d'Azur":
               item = db.nodes.create(Region=info[0], Nom=info[1], Adresse=info[2], telephone=info[3])
-     PbProvenceAlpesCotedAzur.relationships.create("Infos",item)
-     labelPbres.add(item)
-     print(item)
+              PbProvenceAlpesCotedAzur.relationships.create("Infos",item)
+              labelPbres.add(item)
+              print(item)
      if info[0] == "Rhône-Alpes":
               item = db.nodes.create(Region=info[0], Nom=info[1], Adresse=info[2], telephone=info[3])
-     PbRhoneAlpes.relationships.create("Infos",item)
-     labelPbres.add(item)
-     print(item)
+              PbRhoneAlpes.relationships.create("Infos",item)
+              labelPbres.add(item)
+              print(item)
      if info[0] == "Guadeloupe":
               item = db.nodes.create(Region=info[0], Nom=info[1], Adresse=info[2], telephone=info[3])
-     PbGuadeloupe.relationships.create("Infos",item)
-     labelPbres.add(item)
-     print(item)
+              PbGuadeloupe.relationships.create("Infos",item)
+              labelPbres.add(item)
+              print(item)
      if info[0] == "Guyane":
               item = db.nodes.create(Region=info[0], Nom=info[1], Adresse=info[2], telephone=info[3])
-     PbGuyane.relationships.create("Infos",item)
-     labelPbres.add(item)
-     print(item)
+              PbGuyane.relationships.create("Infos",item)
+              labelPbres.add(item)
+              print(item)
      if info[0] == "La+Réunion":
               item = db.nodes.create(Region=info[0], Nom=info[1], Adresse=info[2], telephone=info[3])
-     PbLaRunion.relationships.create("Infos",item)
-     labelPbres.add(item)
-     print(item)
+              PbLaRunion.relationships.create("Infos",item)
+              labelPbres.add(item)
+              print(item)
      if info[0] == "Martinique":
               item = db.nodes.create(Region=info[0], Nom=info[1], Adresse=info[2], telephone=info[3])
-     PbMartinique.relationships.create("Infos",item)
-     labelPbres.add(item)
-     print(item)
+              PbMartinique.relationships.create("Infos",item)
+              labelPbres.add(item)
+              print(item)
      if info[0] == "Mayotte":
               item = db.nodes.create(Region=info[0], Nom=info[1], Adresse=info[2], telephone=info[3])
-     PbMayotte.relationships.create("Infos",item)
-     labelPbres.add(item)
-     print(item)
+              PbMayotte.relationships.create("Infos",item)
+              labelPbres.add(item)
+              print(item)
 
 
 
@@ -2498,8 +2713,6 @@ for pdf in yahoopdfchance:
 print()
 Fig = Figlet(font='cybermedium')
 print(Fig.renderText('Yahoo not parsed'))
-print()
-print("Still google..")
 print("")
 
 for spec in yahoospecial:
